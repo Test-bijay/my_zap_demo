@@ -15,7 +15,7 @@ jobs:
       - name: Start ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.6.0
         with:
-          target: 'https://your-deployed-url.com'  # ← Change this to your deployed app
+          target: 'https://my-zap-demo.vercel.app/'
           format: 'html'
           fail_action: false
           allow_issue_writing: false
