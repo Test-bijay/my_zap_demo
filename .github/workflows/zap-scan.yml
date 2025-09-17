@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  zap_scan:
+  zapjob:
     runs-on: ubuntu-latest
     name: Run OWASP ZAP Full Scan
 
@@ -16,23 +16,23 @@ jobs:
         uses: zaproxy/action-full-scan@v0.6.0
         with:
           target: 'https://my-zap-demo.vercel.app/'
-          fail_action: false          # Set true if you want to fail workflow on alerts
-          allow_issue_writing: false  # Don't create GitHub issues automatically
+          fail_action: false
+          allow_issue_writing: false
 
       - name: Upload ZAP Report (HTML)
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report-html
+          name: zap_report_html
           path: report_html.html
 
       - name: Upload ZAP Report (JSON)
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report-json
+          name: zap_report_json
           path: report_json.json
 
       - name: Upload ZAP Report (Markdown)
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report-md
+          name: zap_report_md
           path: report_md.md
