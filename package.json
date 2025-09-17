@@ -1,0 +1,14 @@
+{
+  "name": "zap-demo-app",
+  "version": "1.0.0",
+  "description": "Simple Express app to test OWASP ZAP DAST scan",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "You",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

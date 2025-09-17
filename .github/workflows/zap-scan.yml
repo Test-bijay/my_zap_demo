@@ -1,0 +1,27 @@
+name: OWASP ZAP DAST Scan
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  zap_scan:
+    runs-on: ubuntu-latest
+    name: Run OWASP ZAP Full Scan
+
+    steps:
+      - name: Start ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.6.0
+        with:
+          target: 'https://your-deployed-url.com'  # ← Change this to your deployed app
+          format: 'html'
+          fail_action: false
+          allow_issue_writing: false
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: owasp-zap-report.html
