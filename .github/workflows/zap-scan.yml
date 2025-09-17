@@ -1,38 +1,36 @@
-name: OWASP ZAP DAST Scan
+name: ZAP Full Scan
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
-  zapjob:
+  zap_scan:
     runs-on: ubuntu-latest
-    name: Run OWASP ZAP Full Scan
-
+    name: ZAP Full Scan
     steps:
-      - name: Start ZAP Full Scan
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up report files
+        run: |
+          touch report_json.json report_md.md report_html.html
+          chmod a+w report_json.json report_md.md report_html.html
+
+      - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.6.0
         with:
           target: 'https://my-zap-demo.vercel.app/'
-          fail_action: false
-          allow_issue_writing: false
+          format: openapi
+          cmd_options: >
+            -J report_json.json
+            -w report_md.md
+            -r report_html.html
 
-      - name: Upload ZAP Report (HTML)
-        uses: actions/upload-artifact@v4
+      - name: Upload ZAP Scan Report Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: zap_report_html
-          path: report_html.html
-
-      - name: Upload ZAP Report (JSON)
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap_report_json
-          path: report_json.json
-
-      - name: Upload ZAP Report (Markdown)
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap_report_md
-          path: report_md.md
+          name: zap-scan-report
+          path: |
+            report_json.json
+            report_md.md
+            report_html.html
