@@ -6,16 +6,15 @@ on:
 jobs:
   zap_scan:
     runs-on: windows-latest
-    name: ZAP Full Scan
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up report files
         run: |
-          echo. > report_json.json
-          echo. > report_md.md
-          echo. > report_html.html
+          New-Item -Path report_json.json -ItemType File -Force
+          New-Item -Path report_md.md -ItemType File -Force
+          New-Item -Path report_html.html -ItemType File -Force
 
       - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.6.0
