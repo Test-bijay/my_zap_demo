@@ -10,7 +10,7 @@ on:
 
 jobs:
   zap_scan:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     name: ZAP Full Scan
     steps:
       - name: Checkout repo
@@ -32,7 +32,7 @@ jobs:
             -r report_html.html
 
       - name: Upload ZAP Scan Report Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: zap-scan-report
           path: |
