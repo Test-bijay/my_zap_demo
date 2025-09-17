@@ -5,22 +5,20 @@ on:
 
 jobs:
   zap_scan:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up report files
         run: |
-          New-Item -Path report_json.json -ItemType File -Force
-          New-Item -Path report_md.md -ItemType File -Force
-          New-Item -Path report_html.html -ItemType File -Force
+          touch report_json.json report_md.md report_html.html
+          chmod a+w report_json.json report_md.md report_html.html
 
       - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.6.0
         with:
           target: 'https://my-zap-demo.vercel.app/'
-          format: openapi
           cmd_options: >
             -J report_json.json
             -w report_md.md
