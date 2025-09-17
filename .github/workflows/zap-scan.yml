@@ -1,12 +1,7 @@
 name: ZAP Full Scan
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 jobs:
   zap_scan:
@@ -18,8 +13,9 @@ jobs:
 
       - name: Set up report files
         run: |
-          touch report_json.json report_md.md report_html.html
-          chmod a+w report_json.json report_md.md report_html.html
+          echo. > report_json.json
+          echo. > report_md.md
+          echo. > report_html.html
 
       - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.6.0
