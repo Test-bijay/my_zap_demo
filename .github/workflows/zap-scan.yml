@@ -1,7 +1,12 @@
 name: ZAP Full Scan
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
   zap_scan:
