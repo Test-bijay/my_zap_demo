@@ -1,5 +1,9 @@
 name: OWASP ZAP DAST Scan
 
+permissions:
+  issues: write
+
+
 on:
   push:
     branches: [master]  
