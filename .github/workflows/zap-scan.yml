@@ -1,27 +1,30 @@
 name: OWASP ZAP DAST Scan
 
+# Run this workflow on push to main or manually
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Add permissions to create issues
 permissions:
   issues: write
 
-
-on:
-  push:
-    branches: [master]  
-
 jobs:
   zap_scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  
 
     steps:
       - name: Run ZAP Full Scan on Live App
         uses: zaproxy/action-full-scan@v0.7.0
         with:
-          target: 'https://my-zap-demo.vercel.app'
+          target: 'https://my-zap-demo.vercel.app'  # 🔁 Replace with your actual URL
           fail_action: false
+          create_issue: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload ZAP HTML Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: zap-html-report
+          name: zap_scan          
           path: report_html.html
