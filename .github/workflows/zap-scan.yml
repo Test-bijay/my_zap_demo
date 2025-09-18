@@ -1,27 +1,31 @@
-name: OWASP ZAP Auto Scan
+name: DAST Scan with OWASP ZAP
 
 on:
   push:
-    branches:
-      - main              
-  schedule:
-    - cron: '0 1 * * *'   
-  workflow_dispatch:  
+    branches: [master]  # or use pull_request, schedule, etc.
 
 jobs:
   zap_scan:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-    - name: ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.10.0
-      with:
-        target: 'https://my-zap-demo.vercel.app/' 
-        fail_action: false                  
-        cmd_options: '-a'                  
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Upload ZAP Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-report
-        path: owasp-zap-report.html
+      - name: Start Application (example with Docker Compose)
+        run: |
+          docker-compose up -d
+          sleep 30  # Wait for the app to fully start (adjust as needed)
+
+      - name: Run ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.7.0
+        with:
+          target: 'https://my-zap-demo.vercel.app' 
+          fail_action: false               
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZAP Scan Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: zap-report
+          path: report_html.html
