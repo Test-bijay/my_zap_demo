@@ -1,34 +1,27 @@
-name: ZAP Full Scan
+name: OWASP ZAP Auto Scan
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main              
+  schedule:
+    - cron: '0 1 * * *'   
+  workflow_dispatch:  
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'https://my-zap-demo.vercel.app/' 
+        fail_action: false                  
+        cmd_options: '-a'                  
 
-      - name: Set up report files
-        run: |
-          touch report_json.json report_md.md report_html.html
-          chmod a+w report_json.json report_md.md report_html.html
-
-      - name: Run ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.6.0
-        with:
-          target: 'https://my-zap-demo.vercel.app/'
-          cmd_options: >
-            -J report_json.json
-            -w report_md.md
-            -r report_html.html
-
-      - name: Upload ZAP Scan Report Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-scan-report
-          path: |
-            report_json.json
-            report_md.md
-            report_html.html
+    - name: Upload ZAP Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-report
+        path: owasp-zap-report.html
