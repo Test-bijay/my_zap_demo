@@ -4,11 +4,18 @@
   "description": "Simple Express app to test OWASP ZAP DAST scan",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "test:e2e": "playwright test"
   },
   "author": "You",
   "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  },
   "dependencies": {
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
   }
 }
