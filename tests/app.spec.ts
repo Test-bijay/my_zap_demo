@@ -1,17 +1,16 @@
-// tests/homepage.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('homepage loads and shows heading', async ({ page }) => {
-  await page.goto('https://my-zap-demo.vercel.app/');
+  await page.goto('/'); // Uses baseURL
 
-  // ✅ Example checks:
- await expect(page).toHaveTitle(/ZAP Test App/i);
+  // Check that page title is correct
+  await expect(page).toHaveTitle(/ZAP Test App/i);
 
-  // Check that a specific element exists
-  await expect(page.locator('h1')).toBeVisible(); // Adjust selector as needed
+  // Check the H1 is visible
+  await expect(page.locator('h1')).toBeVisible();
 
-  // Check button or message if present
-  const button = page.locator('button'); // or '#click-me', etc.
+  // Optionally test button interaction
+  const button = page.locator('button');
   if (await button.isVisible()) {
     await button.click();
     await expect(page.locator('#message')).toHaveText(/clicked/i);
