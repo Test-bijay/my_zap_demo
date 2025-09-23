@@ -1,4 +1,4 @@
-name: CI - React Tests on Ubuntu
+name: CI - React Tests on Windows
 
 on:
   push:
