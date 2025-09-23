@@ -5,7 +5,7 @@ test('homepage loads and shows heading', async ({ page }) => {
   await page.goto('https://my-zap-demo.vercel.app/');
 
   // ✅ Example checks:
-  await expect(page).toHaveTitle(/Zap Demo/i);
+ await expect(page).toHaveTitle(/ZAP Test App/i);
 
   // Check that a specific element exists
   await expect(page.locator('h1')).toBeVisible(); // Adjust selector as needed
