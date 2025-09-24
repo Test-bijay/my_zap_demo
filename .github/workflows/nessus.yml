@@ -20,15 +20,19 @@ jobs:
         TARGET: $https://my-zap-demo.vercel.app/
         TEMPLATE_UUID: ${{ secrets.NESSUS_TEMPLATE_UUID }}
       run: |
-        echo "🔐 Authenticating with Nessus..."
-        TOKEN=$(curl -s -X POST "$NESSUS_HOST/session" \
-          -H "Content-Type: application/json" \
-          -d "{\"accessKey\":\"$ACCESS_KEY\",\"secretKey\":\"$SECRET_KEY\"}" | jq -r '.token')
+       echo "🔐 Authenticating with Nessus..."
+AUTH_RESPONSE=$(curl -sk -X POST "$NESSUS_HOST/session" \
+  -H "Content-Type: application/json" \
+  -d "{\"accessKey\":\"$ACCESS_KEY\",\"secretKey\":\"$SECRET_KEY\"}")
 
-        if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-          echo "❌ Failed to authenticate with Nessus"
-          exit 1
-        fi
+echo "Auth response: $AUTH_RESPONSE"
+
+TOKEN=$(echo "$AUTH_RESPONSE" | jq -r '.token')
+
+if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+  echo "❌ Failed to authenticate with Nessus"
+  exit 1
+fi
 
         echo "🚀 Creating scan for target: $TARGET"
         SCAN_PAYLOAD=$(cat <<EOF
