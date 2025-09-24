@@ -1,0 +1,67 @@
+# .github/workflows/nessus-scan.yml
+name: Nessus Vulnerability Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nessus-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run Nessus Scan
+      env:
+        NESSUS_HOST: $https://localhost:8834/#/scans/folders/my-scans
+        NESSUS_ACCESS_KEY: $c9ecb895284a4a2902f3552b7f6d2dd491f16d2632a7d6b68fe5233d85c5e841
+        NESSUS_SECRET_KEY: $de8de8677af556c134e19cada28f849a35767dd05d6935426c4bd56510b27243
+        TARGET: "https://my-zap-demo.vercel.app/"
+      run: |
+        echo "Authenticating with Nessus..."
+        TOKEN=$(curl -s -X POST "$NESSUS_HOST/session" \
+          -H "Content-Type: application/json" \
+          -d "{\"accessKey\":\"$NESSUS_ACCESS_KEY\",\"secretKey\":\"$NESSUS_SECRET_KEY\"}" | jq -r '.token')
+
+        echo "Creating scan..."
+        SCAN_PAYLOAD=$(cat <<EOF
+        {
+          "uuid": "your-scan-template-uuid",
+          "settings": {
+            "name": "GitHub Auto Scan",
+            "enabled": true,
+            "text_targets": "$TARGET",
+            "launch_now": true
+          }
+        }
+        EOF
+        )
+
+        SCAN_ID=$(curl -s -X POST "$NESSUS_HOST/scans" \
+          -H "X-Cookie: token=$TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "$SCAN_PAYLOAD" | jq -r '.scan.id')
+
+        echo "Waiting for scan to complete..."
+        STATUS="running"
+        while [ "$STATUS" != "completed" ]; do
+          sleep 15
+          STATUS=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID" \
+            -H "X-Cookie: token=$TOKEN" | jq -r '.info.status')
+          echo "Scan status: $STATUS"
+        done
+
+        echo "Downloading report..."
+        REPORT_ID=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID" \
+          -H "X-Cookie: token=$TOKEN" | jq -r '.history[0].history_id')
+
+        curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export" \
+          -H "X-Cookie: token=$TOKEN" \
+          -H "Content-Type: application/json" \
+          -d '{"format": "html"}' > /dev/null
+
+        EXPORT_ID=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export" \
+          -H "X-Cookie: token=$TOKEN" | jq -r '.file')
+
+        curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export/$EXPORT_ID/download" \
