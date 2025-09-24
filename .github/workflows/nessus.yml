@@ -1,35 +1,41 @@
-# .github/workflows/nessus-scan.yml
 name: Nessus Vulnerability Scan
 
 on:
   workflow_dispatch:
 
 jobs:
-  nessus-scan:
+  nessus_scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Install jq
+      run: sudo apt-get install jq -y
 
-    - name: Run Nessus Scan
+    - name: Trigger Nessus Scan
       env:
         NESSUS_HOST: $https://localhost:8834/#/scans/folders/my-scans
-        NESSUS_ACCESS_KEY: $c9ecb895284a4a2902f3552b7f6d2dd491f16d2632a7d6b68fe5233d85c5e841
-        NESSUS_SECRET_KEY: $de8de8677af556c134e19cada28f849a35767dd05d6935426c4bd56510b27243
-        TARGET: "https://my-zap-demo.vercel.app/"
+        ACCESS_KEY: $c9ecb895284a4a2902f3552b7f6d2dd491f16d2632a7d6b68fe5233d85c5e841
+        SECRET_KEY: $de8de8677af556c134e19cada28f849a35767dd05d6935426c4bd56510b27243
+        TARGET: $https://my-zap-demo.vercel.app/
+        TEMPLATE_UUID: ${{ secrets.NESSUS_TEMPLATE_UUID }}
       run: |
-        echo "Authenticating with Nessus..."
+        echo "🔐 Authenticating with Nessus..."
         TOKEN=$(curl -s -X POST "$NESSUS_HOST/session" \
           -H "Content-Type: application/json" \
-          -d "{\"accessKey\":\"$NESSUS_ACCESS_KEY\",\"secretKey\":\"$NESSUS_SECRET_KEY\"}" | jq -r '.token')
+          -d "{\"accessKey\":\"$ACCESS_KEY\",\"secretKey\":\"$SECRET_KEY\"}" | jq -r '.token')
 
-        echo "Creating scan..."
+        if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+          echo "❌ Failed to authenticate with Nessus"
+          exit 1
+        fi
+
+        echo "🚀 Creating scan for target: $TARGET"
         SCAN_PAYLOAD=$(cat <<EOF
         {
-          "uuid": "your-scan-template-uuid",
+          "uuid": "$TEMPLATE_UUID",
           "settings": {
-            "name": "GitHub Auto Scan",
+            "name": "GitHub Auto Scan - $(date +%Y%m%d%H%M%S)",
             "enabled": true,
             "text_targets": "$TARGET",
             "launch_now": true
@@ -38,30 +44,82 @@ jobs:
         EOF
         )
 
-        SCAN_ID=$(curl -s -X POST "$NESSUS_HOST/scans" \
+        RESPONSE=$(curl -s -X POST "$NESSUS_HOST/scans" \
           -H "X-Cookie: token=$TOKEN" \
           -H "Content-Type: application/json" \
-          -d "$SCAN_PAYLOAD" | jq -r '.scan.id')
+          -d "$SCAN_PAYLOAD")
 
-        echo "Waiting for scan to complete..."
-        STATUS="running"
-        while [ "$STATUS" != "completed" ]; do
+        SCAN_ID=$(echo "$RESPONSE" | jq -r '.scan.id')
+
+        if [[ -z "$SCAN_ID" || "$SCAN_ID" == "null" ]]; then
+          echo "❌ Failed to create scan. Response:"
+          echo "$RESPONSE"
+          exit 1
+        fi
+
+        echo "📡 Waiting for scan $SCAN_ID to complete..."
+        STATUS="initializing"
+        MAX_WAIT=1800  # 30 minutes max
+        WAITED=0
+
+        while [[ "$STATUS" != "completed" && "$STATUS" != "canceled" && "$WAITED" -lt "$MAX_WAIT" ]]; do
           sleep 15
-          STATUS=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID" \
-            -H "X-Cookie: token=$TOKEN" | jq -r '.info.status')
-          echo "Scan status: $STATUS"
+          WAITED=$((WAITED + 15))
+          SCAN_INFO=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID" \
+            -H "X-Cookie: token=$TOKEN")
+          STATUS=$(echo "$SCAN_INFO" | jq -r '.info.status')
+
+          if [[ -z "$STATUS" || "$STATUS" == "null" ]]; then
+            echo "❌ Error getting scan status."
+            echo "$SCAN_INFO"
+            exit 1
+          fi
+
+          echo "⏳ Scan status: $STATUS (waited ${WAITED}s)"
         done
 
-        echo "Downloading report..."
-        REPORT_ID=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID" \
-          -H "X-Cookie: token=$TOKEN" | jq -r '.history[0].history_id')
+        if [[ "$STATUS" != "completed" ]]; then
+          echo "❌ Scan did not complete in time. Status: $STATUS"
+          exit 1
+        fi
 
-        curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export" \
+        echo "✅ Scan completed. Checking for high vulnerabilities..."
+        HIGH_VULNS=$(echo "$SCAN_INFO" | jq '[.vulnerabilities[] | select(.severity == 3)] | map(.count) | add // 0')
+        CRITICAL_VULNS=$(echo "$SCAN_INFO" | jq '[.vulnerabilities[] | select(.severity == 4)] | map(.count) | add // 0')
+
+        echo "High vulnerabilities: $HIGH_VULNS"
+        echo "Critical vulnerabilities: $CRITICAL_VULNS"
+
+        if [[ "$CRITICAL_VULNS" -gt 0 || "$HIGH_VULNS" -gt 0 ]]; then
+          echo "❌ Scan failed due to detected high or critical vulnerabilities."
+          exit 1
+        fi
+
+        echo "📥 Exporting scan report..."
+        EXPORT_RESPONSE=$(curl -s -X POST "$NESSUS_HOST/scans/$SCAN_ID/export" \
           -H "X-Cookie: token=$TOKEN" \
           -H "Content-Type: application/json" \
-          -d '{"format": "html"}' > /dev/null
+          -d '{"format": "html"}')
 
-        EXPORT_ID=$(curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export" \
-          -H "X-Cookie: token=$TOKEN" | jq -r '.file')
+        FILE_ID=$(echo "$EXPORT_RESPONSE" | jq -r '.file')
 
-        curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export/$EXPORT_ID/download" \
+        if [[ -z "$FILE_ID" || "$FILE_ID" == "null" ]]; then
+          echo "❌ Failed to export scan report."
+          echo "$EXPORT_RESPONSE"
+          exit 1
+        fi
+
+        # Wait for the report to be ready
+        echo "⏳ Waiting for report to be ready..."
+        sleep 10  # May need longer for large scans
+
+        curl -s -X GET "$NESSUS_HOST/scans/$SCAN_ID/export/$FILE_ID/download" \
+          -H "X-Cookie: token=$TOKEN" -o nessus-report.html
+
+        echo "📄 Report saved as 'nessus-report.html'"
+
+    - name: Upload Nessus HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nessus Scan Report
+        path: nessus-report.html
