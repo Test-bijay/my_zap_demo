@@ -1,0 +1,95 @@
+name: Dependabot + Security Validation
+
+# Trigger on Dependabot PRs and also manual / schedule if desired
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - '**/package.json'
+      - '**/pom.xml'
+      - '**/go.mod'
+      - '**/requirements.txt'
+      - '.github/workflows/**'
+  schedule:
+    - cron: '0 2 * * *'   # nightly or weekly run
+  workflow_dispatch:
+
+jobs:
+  # Job to run tests & build after dependency update
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up environment / install dependencies
+        # adjust for your stack, e.g. Node, Java, Python, etc.
+        run: |
+          # e.g. for Node.js
+          npm ci
+        # or for Python, Java, etc.
+
+      - name: Run tests
+        run: |
+          # run your unit / integration tests
+          npm test
+      # optionally upload test results, coverage etc
+
+  # Job to scan with ZAP or other security tool, only if build_and_test succeeded
+  zap_scan:
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start local server
+        # If your app runs (for example) via a dev server on port 3000
+        run: |
+          # e.g. npm start & background
+          npm start &
+
+      - name: Wait for server ready
+        run: |
+          # simple wait or health-check loop
+          n=0
+          until $(curl --output /dev/null --silent --head --fail http://127.0.0.1:3000); do
+            n=$((n + 1))
+            if [ $n -ge 30 ]; then
+              echo "Server did not start in time"
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Run OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: 'http://127.0.0.1:3000'
+          docker_name: 'owasp/zap2docker-stable'
+          # optionally set rules, thresholds, etc
+          allow_issue_writing: false
+
+      - name: Stop server
+        run: |
+          kill $(lsof -t -i:3000) || true
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v3
+        with:
+          name: zap-report
+          path: ./zap-report*  # adjust pattern as per output
+
+  # Optionally, job to merge the Dependabot PR if everything passes
+  auto_merge:
+    needs: [build_and_test, zap_scan]
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == github.event.pull_request.base.repo.full_name
+    steps:
+      - name: Auto-merge Dependabot PR
+        uses: pascalgn/automerge-action@v0.14.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          merge_method: squash
