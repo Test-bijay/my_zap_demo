@@ -15,22 +15,39 @@ on:
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up environment / install dependencies
-        run: |
-          npm ci
+    - name: Set up environment / install dependencies
+      run: |
+        npm ci
 
-      - name: Install Playwright Browsers
-        run: |
-          npx playwright install --with-deps
+    - name: Install Playwright Browsers
+      run: |
+        npx playwright install --with-deps
 
-      - name: Run tests
-        run: |
-          npm test
+    - name: Start app server
+      run: |
+        npm start &
+
+    - name: Wait for server to be ready
+      run: |
+        n=0
+        until $(curl --output /dev/null --silent --head --fail http://localhost:3000); do
+          n=$((n + 1))
+          if [ $n -ge 30 ]; then
+            echo "Server did not start in time"
+            exit 1
+          fi
+          sleep 2
+        done
+
+    - name: Run tests
+      run: |
+        npm test
+
 
   zap_scan:
     needs: build_and_test
