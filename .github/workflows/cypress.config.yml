@@ -1,0 +1,12 @@
+# cypress.config.yml
+baseUrl: "https://my-zap-demo.vercel.app"
+integrationFolder: "cypress/integration"
+fixturesFolder: "cypress/fixtures"
+screenshotsFolder: "cypress/screenshots"
+videosFolder: "cypress/videos"
+reporter: "mochawesome"
+reporterOptions:
+  reportDir: "cypress/reports"
+  overwrite: false
+  html: true
+  json: true

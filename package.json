@@ -4,7 +4,8 @@
   "description": "Simple Express app to test OWASP ZAP DAST scan",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
+    "start": "node app.js",  
+    "test:e2e": "cypress run --config baseUrl=https://my-zap-demo.vercel.app"
     "test": "playwright test"
   },
   "author": "You",
@@ -17,6 +18,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "cypress": "^15.3.0",
+    "mochawesome": "^7.1.4",
     "playwright": "^1.55.1"
   }
 }
