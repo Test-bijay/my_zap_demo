@@ -34,3 +34,6 @@ jobs:
             cypress/videos
             cypress/screenshots
             cypress/reports
+      - name: Install Playwright dependencies
+  run: npx playwright install --with-deps
+
